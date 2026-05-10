@@ -133,13 +133,11 @@ pub(crate) fn parse_program_store_header(
         }
     }
 
-    if raw.reserved.get() != 0 {
+    if raw.reserved != 0 {
         return Err(StructureError);
     }
 
-    let Ok(payload_len) = usize::try_from(raw.len.get()) else {
-        return Err(StructureError);
-    };
+    let payload_len = raw.len.get() as usize;
     if payload_len == 0 {
         return Err(StructureError);
     }
