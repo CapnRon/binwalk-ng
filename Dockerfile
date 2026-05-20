@@ -1,5 +1,5 @@
 ## Scratch build stage
-FROM ubuntu:26.04 AS build
+FROM ubuntu:26.04 AS base_build
 
 ARG BUILD_DIR="/tmp"
 ARG BINWALK_BUILD_DIR="${BUILD_DIR}/binwalk"
@@ -45,6 +45,8 @@ RUN apt-get update -y \
     && make -C ${BUILD_DIR}/dmg2img dmg2img vfdecrypt HAVE_LZFSE=1 \
     && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
+FROM base_build AS build
+
 COPY --link . ${BINWALK_BUILD_DIR}
 WORKDIR ${BINWALK_BUILD_DIR}
 
@@ -56,7 +58,7 @@ RUN --mount=type=cache,target=./target,sharing=locked \
 
 
 ## Prod image build stage
-FROM ubuntu:26.04
+FROM ubuntu:26.04 AS runtime_build
 
 ARG BUILD_DIR="/tmp"
 ARG BINWALK_BUILD_DIR="${BUILD_DIR}/binwalk"
@@ -119,6 +121,28 @@ RUN --mount=from=ghcr.io/astral-sh/uv:latest,source=/uv,target=/bin/uv \
     && rm -rf /var/cache/apt/archives /var/lib/apt/lists/* \
     && mkdir -p ${DEFAULT_WORKING_DIR} \
     && chmod 777 ${DEFAULT_WORKING_DIR}
+
+FROM runtime_build AS tests
+# Copy the build artifacts from the scratch build stage
+COPY --link --from=base_build \
+    /usr/local/bin/lzfse \
+    ${BUILD_DIR}/dumpifs/dumpifs \
+    ${BUILD_DIR}/dmg2img/dmg2img \
+    ${BUILD_DIR}/dmg2img/vfdecrypt \
+    /usr/local/bin/
+RUN apt-get update \
+    && apt-get install -y curl build-essential \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+WORKDIR ${BINWALK_BUILD_DIR}
+
+COPY --link . ${BINWALK_BUILD_DIR}
+
+RUN --mount=type=cache,target=./target,sharing=locked \
+    --mount=type=cache,target=/root/.cargo/registry,sharing=locked \
+    . /root/.cargo/env && cargo test
+
+FROM runtime_build
 
 # Copy the build artifacts from the scratch build stage
 COPY --link --from=build \
