@@ -69,9 +69,10 @@ fn main() -> ExitCode {
     if cli_args.entropy {
         #[cfg(not(feature = "entropy-plot"))]
         {
-            panic!(
+            error!(
                 "binwalk was built without the \"entropy-plot\" feature, entropy analysis isn't available"
             );
+            return ExitCode::FAILURE;
         }
         #[cfg(feature = "entropy-plot")]
         {
@@ -82,12 +83,13 @@ fn main() -> ExitCode {
                 entropy::plot(cli_args.file_name.unwrap(), cli_args.png.as_deref())
             {
                 // Log entropy results to JSON file, if requested
-                json_logger.log(json::JSONType::Entropy(entropy_results.clone()));
+                json_logger.log(json::JSONType::Entropy(entropy_results));
                 json_logger.close();
 
                 display::println_plain(cli_args.quiet, "done.");
             } else {
-                panic!("Entropy analysis failed!");
+                error!("Entropy analysis failed!");
+                return ExitCode::FAILURE;
             }
 
             return ExitCode::SUCCESS;
@@ -127,11 +129,6 @@ fn main() -> ExitCode {
             Ok(coreinfo) => coreinfo.get(),
         }
     });
-
-    // Sanity check the number of available worker threads
-    if available_workers < 1 {
-        panic!("No available worker threads!");
-    }
 
     // Initialize thread pool
     debug!("Initializing thread pool with {available_workers} workers");
@@ -260,7 +257,7 @@ fn main() -> ExitCode {
 
 /// Returns true if the specified results should be displayed to screen
 fn should_display(results: &AnalysisResults, file_count: usize, verbose: bool) -> bool {
-    let mut display_results: bool = false;
+    let mut display_results = false;
 
     /*
      * For brevity, when analyzing more than one file only display subsequent files whose results
@@ -315,7 +312,7 @@ fn spawn_worker(
 
         // Report file results back to main thread
         if let Err(e) = worker_tx.send(results) {
-            panic!(
+            error!(
                 "Worker thread for {} failed to send results back to main thread: {e}",
                 target_file.display()
             );

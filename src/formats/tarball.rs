@@ -126,7 +126,7 @@ fn tarball_entry_size(tarball_entry_data: &[u8]) -> Result<usize, SignatureError
             &tarball_entry_data[TARBALL_SIZE_OFFSET..TARBALL_SIZE_OFFSET + TARBALL_SIZE_LEN];
 
         // Convert the ASCII octal to a number
-        let reported_entry_size: usize = tarball_octal(entry_size_string);
+        let reported_entry_size = tarball_octal(entry_size_string);
 
         // The actual size of this entry will be the data size, rounded up to the nearest block size, PLUS one block for the entry header
         let block_count: usize =

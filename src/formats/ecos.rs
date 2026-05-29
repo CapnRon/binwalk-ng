@@ -38,7 +38,7 @@ pub fn exception_handler_parser(
         ..Default::default()
     };
 
-    let mut endianness: &str = "big";
+    let mut endianness = "big";
 
     // Detect endianness
     if file_data[offset] == 0 {

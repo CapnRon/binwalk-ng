@@ -356,7 +356,7 @@ impl Binwalk {
                 let magic_offset: usize = next_valid_offset + magic_match.start();
 
                 // Get the signature associated with this magic signature
-                let magic_pattern_index: usize = magic_match.pattern().as_usize();
+                let magic_pattern_index = magic_match.pattern().as_usize();
                 let signature: signatures::Signature = self
                     .pattern_signature_table
                     .get(&magic_pattern_index)

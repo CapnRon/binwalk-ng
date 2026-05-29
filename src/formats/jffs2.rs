@@ -159,7 +159,7 @@ pub fn parse_jffs2_node_header(node_data: &[u8]) -> Result<JFFS2Node, StructureE
                 }
                 Ok(node_header_be) => {
                     node.endianness = "big".to_string();
-                    node_header = node_header_be.clone();
+                    node_header = node_header_be;
                 }
             }
         }

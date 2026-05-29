@@ -323,7 +323,7 @@ impl Chroot {
         let path2 = path2.as_ref();
         let path2 = path2.strip_prefix("/").unwrap_or(path2);
 
-        let mut joined_path = self.sanitize_path(path1.join(path2)).to_path_buf();
+        let mut joined_path = self.sanitize_path(path1.join(path2));
 
         // If the joined path does not start with the chroot directory,
         // prepend the chroot directory to the final joined path.
@@ -333,8 +333,7 @@ impl Chroot {
         } else if !joined_path.starts_with(&self.chroot_directory) {
             joined_path = self
                 .chroot_directory
-                .join(joined_path.strip_prefix("/").unwrap_or(&joined_path))
-                .to_path_buf();
+                .join(joined_path.strip_prefix("/").unwrap_or(&joined_path));
         }
 
         joined_path
@@ -439,7 +438,7 @@ impl Chroot {
         start: usize,
         size: usize,
     ) -> bool {
-        let mut retval: bool = false;
+        let mut retval = false;
 
         if let Some(file_data) = data.get(start..start + size) {
             retval = self.create_file(file_path, file_data);
@@ -464,7 +463,7 @@ impl Chroot {
         minor: usize,
     ) -> bool {
         let device_file_contents: String = format!("{device_type} {major} {minor}");
-        self.create_file(file_path, &device_file_contents.clone().into_bytes())
+        self.create_file(file_path, &device_file_contents.into_bytes())
     }
 
     /// Creates a character device file in the chroot directory.
@@ -1214,7 +1213,7 @@ fn proc_wait(mut worker_info: ProcInfo) -> Result<ExtractionResult, ExtractionEr
         // Child terminated with an exit status
         Ok(status) => {
             // Assume failure until proven otherwise
-            let mut extraction_success: bool = false;
+            let mut extraction_success = false;
 
             // Clean up the carved file used as input to the extractor
             debug!("Deleting carved file {}", worker_info.carved_file);

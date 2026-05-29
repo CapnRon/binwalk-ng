@@ -154,10 +154,10 @@ fn print_extractions(
     signatures: &Vec<signatures::SignatureResult>,
     extraction_results: &HashMap<String, extractors::ExtractionResult>,
 ) {
-    let mut delimiter_printed: bool = false;
+    let mut delimiter_printed = false;
 
     for signature in signatures {
-        let mut printable_extraction: bool = false;
+        let mut printable_extraction = false;
         let mut extraction_result: Option<&extractors::ExtractionResult> = None;
 
         // Only print extraction results if an extraction was attempted or explicitly declined

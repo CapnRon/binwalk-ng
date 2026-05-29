@@ -9,6 +9,13 @@ repository = "https://github.com/binwalk-ng/binwalk-ng"
 description = "Analyzes data for embedded file types"
 keywords = ["binwalk", "firmware", "analysis"]
 
+[lints.clippy]
+redundant_type_annotations = "warn"
+redundant_clone = "warn"
+redundant_as_str = "warn"
+panic = "warn"
+
+
 [features]
 default = []
 entropy-plot = ["dep:plotly", "dep:entropy"]
