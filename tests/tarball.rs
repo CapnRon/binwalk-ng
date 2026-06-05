@@ -89,10 +89,9 @@ fn extraction_produces_expected_files() {
         subdir.display()
     );
 
-    // The symlink entry must be extracted as a symlink. binwalk rewrites link
-    // targets to be absolute *within the extraction root* (chroot-safe: a symlink
-    // can never escape the extracted tree), so the on-disk target is
-    // "/testdir/hello.txt" -- it intentionally does not resolve on the host.
+    // The symlink entry must be extracted as a symlink whose target is rewritten to a
+    // chroot-contained *relative* path (never host-absolute), so it stays inside the
+    // extraction tree and reading through it resolves to testdir/hello.txt.
     let symlink = root.join("testdir/hello.link");
     let link_metadata = fs::symlink_metadata(&symlink)
         .expect("expected symlink testdir/hello.link was not extracted");
@@ -101,10 +100,15 @@ fn extraction_produces_expected_files() {
         "expected {} to be a symlink",
         symlink.display()
     );
+    let link_target = fs::read_link(&symlink).unwrap();
+    assert!(
+        link_target.is_relative(),
+        "symlink target {link_target:?} must be relative (chroot-contained)"
+    );
     assert_eq!(
-        fs::read_link(&symlink).unwrap(),
-        Path::new("/testdir/hello.txt"),
-        "unexpected symlink target for {}",
+        fs::read_to_string(&symlink).unwrap(),
+        "Hello, binwalk-ng tarball!\n",
+        "symlink {} did not resolve to hello.txt within the extraction tree",
         symlink.display()
     );
 
