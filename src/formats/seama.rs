@@ -65,8 +65,9 @@ pub fn parse_seama_header(seama_data: &[u8]) -> Result<SeamaHeader, StructureErr
     let available_data = seama_data.len();
     let header_size = std::mem::size_of::<SeamaHeaderBytes>();
 
-    // Parse the header; try little endian first
-    let seama_header = SeamaHeaderBytes::ref_from_bytes(seama_data).map_err(|_| StructureError)?;
+    // Parse the header
+    let (seama_header, _) =
+        SeamaHeaderBytes::ref_from_prefix(seama_data).map_err(|_| StructureError)?;
 
     let endianness = match seama_header.magic {
         LITTLE_ENDIAN_MAGIC => Endianness::Little,
