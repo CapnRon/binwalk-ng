@@ -70,52 +70,53 @@ pub fn squashfs_parser(file_data: &[u8], offset: usize) -> Result<SignatureResul
         // Validate that the UID table pointer points to a location after the end of the SquashFS header (it's usually at the end of the image)
         if uid_table_start > squashfs_header.header_size
             && let Some(uid_entry_data) = file_data.get(uid_table_start..)
-                && let Ok(uid_entry) = parse_squashfs_uid_entry(
-                    uid_entry_data,
-                    squashfs_header.major_version,
-                    squashfs_header.endianness,
-                ) {
-                    // Make sure the first UID table entry is either 0, or falls within the bounds of the SquashFS image data
-                    if (uid_entry == 0)
-                        || (uid_entry > squashfs_header.header_size
-                            && uid_entry <= squashfs_header.image_size)
-                    {
-                        // Format the modified time into something human readable
-                        let create_date = epoch_to_string(squashfs_header.timestamp);
+            && let Ok(uid_entry) = parse_squashfs_uid_entry(
+                uid_entry_data,
+                squashfs_header.major_version,
+                squashfs_header.endianness,
+            )
+        {
+            // Make sure the first UID table entry is either 0, or falls within the bounds of the SquashFS image data
+            if (uid_entry == 0)
+                || (uid_entry > squashfs_header.header_size
+                    && uid_entry <= squashfs_header.image_size)
+            {
+                // Format the modified time into something human readable
+                let create_date = epoch_to_string(squashfs_header.timestamp);
 
-                        // Make sure the compression type is supported
-                        if let Some(compression_type) =
-                            squashfs_compression_types.get(&squashfs_header.compression)
-                        {
-                            let compression_type_str = compression_type.to_string();
+                // Make sure the compression type is supported
+                if let Some(compression_type) =
+                    squashfs_compression_types.get(&squashfs_header.compression)
+                {
+                    let compression_type_str = compression_type.to_string();
 
-                            // Select the appropriate extractor to use
-                            if squashfs_header.endianness == Endianness::Little {
-                                result.preferred_extractor = Some(squashfs_le_extractor());
-                            } else if squashfs_header.major_version == SQUASHFSV4 {
-                                result.preferred_extractor = Some(squashfs_v4_be_extractor());
-                            } else {
-                                result.preferred_extractor = Some(squashfs_be_extractor());
-                            }
-
-                            result.size = squashfs_header.image_size;
-                            result.description = format!(
-                                "{}, {} endian, version: {}.{}, compression: {}, inode count: {}, block size: {}, image size: {} bytes, created: {}",
-                                result.description,
-                                squashfs_header.endianness,
-                                squashfs_header.major_version,
-                                squashfs_header.minor_version,
-                                compression_type_str,
-                                squashfs_header.inode_count,
-                                squashfs_header.block_size,
-                                squashfs_header.image_size,
-                                create_date
-                            );
-
-                            return Ok(result);
-                        }
+                    // Select the appropriate extractor to use
+                    if squashfs_header.endianness == Endianness::Little {
+                        result.preferred_extractor = Some(squashfs_le_extractor());
+                    } else if squashfs_header.major_version == SQUASHFSV4 {
+                        result.preferred_extractor = Some(squashfs_v4_be_extractor());
+                    } else {
+                        result.preferred_extractor = Some(squashfs_be_extractor());
                     }
+
+                    result.size = squashfs_header.image_size;
+                    result.description = format!(
+                        "{}, {} endian, version: {}.{}, compression: {}, inode count: {}, block size: {}, image size: {} bytes, created: {}",
+                        result.description,
+                        squashfs_header.endianness,
+                        squashfs_header.major_version,
+                        squashfs_header.minor_version,
+                        compression_type_str,
+                        squashfs_header.inode_count,
+                        squashfs_header.block_size,
+                        squashfs_header.image_size,
+                        create_date
+                    );
+
+                    return Ok(result);
                 }
+            }
+        }
     }
 
     Err(SignatureError)
