@@ -2,6 +2,7 @@ use crate::common::epoch_to_string;
 use crate::extractors;
 use crate::signatures::{CONFIDENCE_HIGH, SignatureError, SignatureResult};
 use crate::structures::{Endianness, StructureError, dyn_endian};
+use std::mem::offset_of;
 use zerocopy::{FromBytes, Immutable, KnownLayout, Unaligned};
 
 /// Human readable description
@@ -70,9 +71,6 @@ pub fn squashfs_parser(file_data: &[u8], offset: usize) -> Result<SignatureResul
                 || (uid_entry > squashfs_header.header_size
                     && uid_entry <= squashfs_header.image_size)
             {
-                // Format the modified time into something human readable
-                let create_date = epoch_to_string(squashfs_header.timestamp);
-
                 // Make sure the compression type is supported
                 if let Some(compression_type) = parse_compression_type(squashfs_header.compression)
                 {
@@ -84,6 +82,9 @@ pub fn squashfs_parser(file_data: &[u8], offset: usize) -> Result<SignatureResul
                     } else {
                         result.preferred_extractor = Some(squashfs_be_extractor());
                     }
+
+                    // Format the modified time into something human readable
+                    let create_date = epoch_to_string(squashfs_header.timestamp);
 
                     result.size = squashfs_header.image_size;
                     result.description = format!(
@@ -173,37 +174,34 @@ struct SquashFSV3Header {
     lookup_table_start: dyn_endian::U64,
 }
 
+const SQUASHFS_VERSION_START: usize = {
+    assert!(
+        offset_of!(SquashFSV4Header, major_version) == offset_of!(SquashFSV3Header, major_version)
+    );
+    offset_of!(SquashFSV4Header, major_version)
+};
+#[derive(FromBytes, KnownLayout, Unaligned, Immutable)]
+#[repr(C, packed)]
+struct VersionOnlyHeader {
+    _ignored: [u8; SQUASHFS_VERSION_START],
+    major_version: dyn_endian::U16,
+}
+
 /// Parse a SquashFS superblock header
 pub fn parse_squashfs_header(sqsh_data: &[u8]) -> Result<SquashFSHeader, StructureError> {
     // Size & offset constants
     const MAX_SQUASHFS_VERSION: u16 = 4;
-    const SQUASHFS_VERSION_END: usize = 30;
-    const SQUASHFS_VERSION_START: usize = 28;
     const MIN_SQUASHFS_HEADER_SIZE: usize = 120;
 
     // Make sure there is at least enough data to read in a SquashFS header
     if sqsh_data.len() > MIN_SQUASHFS_HEADER_SIZE {
-        /*
-         * Regardless of the SquashFS version, the version number is always at the same location in the SquashFS suprblock header.
-         * This can then be reliably used to determine both the SquashFS superblock header version, as well as the endianness used.
-         * Interpret the squashfs major version, assuming little endian.
-         */
-        let mut squashfs_version = u16::from_le_bytes(
-            sqsh_data[SQUASHFS_VERSION_START..SQUASHFS_VERSION_END]
-                .try_into()
-                .unwrap(),
-        );
-
-        let endianness = if squashfs_version == 0 || squashfs_version > MAX_SQUASHFS_VERSION {
-            squashfs_version = u16::from_be_bytes(
-                sqsh_data[SQUASHFS_VERSION_START..SQUASHFS_VERSION_END]
-                    .try_into()
-                    .unwrap(),
-            );
-            Endianness::Big
-        } else {
-            Endianness::Little
-        };
+        let (version_header, _) =
+            VersionOnlyHeader::ref_from_prefix(sqsh_data).expect("checked min header size");
+        let (squashfs_version, endianness) =
+            match version_header.major_version.get(Endianness::Little) {
+                le_v if (0..=MAX_SQUASHFS_VERSION).contains(&le_v) => (le_v, Endianness::Little),
+                le_v => (le_v.swap_bytes(), Endianness::Big),
+            };
 
         // Sanity check the version number
         if squashfs_version <= MAX_SQUASHFS_VERSION && squashfs_version > 0 {
