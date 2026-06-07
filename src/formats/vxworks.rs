@@ -161,15 +161,11 @@ pub fn get_symtab_endianness(symbol_data: &[u8]) -> Result<Endianness, Structure
     const TYPE_FIELD_OFFSET: usize = 9;
 
     // The type field starts at offset 8 and is 0x00_00_05_00, so for big endian targets the 9th byte will be NULL
-    if let Some(offset_field) = symbol_data.get(TYPE_FIELD_OFFSET) {
-        if *offset_field == 0 {
-            return Ok(Endianness::Big);
-        }
-
-        return Ok(Endianness::Little);
+    match symbol_data.get(TYPE_FIELD_OFFSET) {
+        Some(0) => Ok(Endianness::Big),
+        Some(_) => Ok(Endianness::Little),
+        None => Err(StructureError),
     }
-
-    Err(StructureError)
 }
 
 /// Describes the VxWorks symbol table extractor
