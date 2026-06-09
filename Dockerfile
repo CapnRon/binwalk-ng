@@ -47,6 +47,8 @@ RUN apt-get update -y \
 
 FROM base_build AS build
 
+ARG BUILD_DIR="/tmp"
+ARG BINWALK_BUILD_DIR="${BUILD_DIR}/binwalk"
 COPY --link . ${BINWALK_BUILD_DIR}
 WORKDIR ${BINWALK_BUILD_DIR}
 
@@ -122,7 +124,7 @@ RUN --mount=from=ghcr.io/astral-sh/uv:latest,source=/uv,target=/bin/uv \
 
 # Container with all build dependencies, as well as all runtime dependencies, for tests
 # e.g. `docker build --target dev . --tag 'binwalk:dev'`
-# `docker run --rm -it -v (pwd):/tmp/binwalk binwalk:dev cargo insta test --review --unreferenced=delete`
+# `docker run --rm -it -v $(pwd):/tmp/binwalk binwalk:dev cargo insta test --review --unreferenced=delete`
 FROM runtime_build AS dev
 # Copy the build artifacts from the scratch build stage
 COPY --link --from=base_build \
